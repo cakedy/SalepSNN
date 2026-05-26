@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salep Sibernetiği — SNN v10</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #080b0f;
+    --bg2: #0d1117;
+    --bg3: #111820;
+    --border: #1e2d3d;
+    --border2: #243447;
+    --text: #c9d1d9;
+    --text2: #8b949e;
+    --text3: #484f58;
+    --green: #10b981;
+    --green2: #059669;
+    --cyan: #22d3ee;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --purple: #a855f7;
+    --blue: #3b82f6;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+  .header-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--green);
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .pulse-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+  .header-stats {
+    display: flex;
+    gap: 24px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .stat-val { color: var(--cyan); font-weight: 500; }
+
+  /* LAYOUT */
+  .main {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 1px;
+    background: var(--border);
+    height: calc(100vh - 49px);
+  }
+
+  .panel {
+    background: var(--bg2);
+    overflow: hidden;
+  }
+
+  /* STRES KONTROL PANELİ */
+  .stress-panel {
+    grid-row: 1 / 3;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .panel-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .stress-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .stress-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    border-radius: 2px 0 0 2px;
+  }
+  .stress-card:hover { border-color: var(--border2); }
+  .stress-card.active { border-color: color-mix(in srgb, var(--c) 40%, transparent); background: color-mix(in srgb, var(--c) 5%, transparent); }
+  .stress-card.active::before { background: var(--c); }
+
+  .stress-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .stress-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    display: flex;
+    justify-content: space-between;
+  }
+  .stress-meta span { color: var(--text2); }
+
+  .stress-toggle {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 28px; height: 16px;
+    border-radius: 8px;
+    background: var(--border2);
+    transition: background 0.2s;
+    cursor: pointer;
+  }
+  .stress-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--text3);
+    transition: all 0.2s;
+  }
+  .active .stress-toggle { background: var(--c); }
+  .active .stress-toggle::after { left: 14px; background: #fff; }
+
+  .intensity-row {
+    margin-top: 8px;
+    display: none;
+  }
+  .active .intensity-row { display: flex; align-items: center; gap: 6px; }
+  .intensity-label { font-family: var(--mono); font-size: 9px; color: var(--text3); width: 44px; }
+  input[type=range] {
+    flex: 1;
+    height: 3px;
+    accent-color: var(--c);
+    cursor: pointer;
+  }
+  .intensity-val { font-family: var(--mono); font-size: 9px; color: var(--text2); width: 28px; text-align: right; }
+
+  /* SİNYAL GRAFİĞİ */
+  .signal-panel {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .graph-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .graph-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .graph-legend {
+    display: flex;
+    gap: 12px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+  }
+  .legend-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+  canvas {
+    flex: 1;
+    width: 100%;
+    display: block;
+  }
+
+  /* NÖRON PANELİ */
+  .neuron-panel {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--border);
+  }
+
+  /* LOG PANELİ */
+  .log-section {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    border-top: 1px solid var(--border);
+    height: 200px;
+    background: var(--bg2);
+  }
+
+  .log-panel {
+    padding: 10px 14px;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.8;
+  }
+  .log-entry { color: var(--text3); }
+  .log-entry .ts { color: var(--text3); margin-right: 6px; }
+  .log-entry .fire { color: var(--green); font-weight: 500; }
+  .log-entry .learn { color: var(--cyan); }
+  .log-entry .inh { color: var(--amber); }
+  .log-entry .stress { color: var(--purple); }
+
+  /* BANT DURUMU */
+  .band-panel {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .band-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .band-name {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    width: 14px;
+  }
+  .band-bar-bg {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .band-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.1s;
+    width: 0%;
+  }
+  .band-tau {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    width: 46px;
+    text-align: right;
+  }
+  .band-winner {
+    font-family: var(--mono);
+    font-size: 9px;
+    width: 40px;
+    text-align: right;
+    transition: color 0.3s;
+  }
+
+  /* CHORD PANEL */
+  .chord-panel {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .chord-box {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 4px;
+    text-align: center;
+    transition: all 0.1s;
+  }
+  .chord-box.lit {
+    border-color: var(--c);
+    background: color-mix(in srgb, var(--c) 12%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--c) 25%, transparent);
+  }
+  .chord-letter {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text3);
+    transition: color 0.1s;
+  }
+  .chord-box.lit .chord-letter { color: var(--c); }
+  .chord-tau {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .sensor-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 5px;
+  }
+  .s-lbl {
+    font-family: var(--mono); font-size: 9px; color: var(--text3);
+    width: 76px; flex-shrink: 0;
+  }
+  .s-bar-bg {
+    flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
+  }
+  .s-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+  .s-val {
+    font-family: var(--mono); font-size: 9px; width: 52px;
+    text-align: right; flex-shrink: 0;
+  }
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">
+    <div class="pulse-dot"></div>
+    SALEP SİBERNETİĞİ — SNN v10.0
+  </div>
+  <div class="header-stats">
+    <div>iterasyon <span class="stat-val" id="hdr-iter">0</span></div>
+    <div>toplam ateşleme <span class="stat-val" id="hdr-fire">0</span></div>
+    <div>en güçlü bağ <span class="stat-val" id="hdr-w">1.50</span></div>
+    <div>Δt son <span class="stat-val" id="hdr-dt">—</span></div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- STRES PANELİ -->
+  <div class="panel stress-panel">
+    <div class="panel-label">stres senaryoları</div>
+
+    <div class="stress-card" id="sc-drought-mild" style="--c:#22d3ee" onclick="toggleStress('drought_mild')">
+      <div class="stress-name">Susuzluk — hafif</div>
+      <div class="stress-meta"><span>ritim ~800ms</span><span>yavaş, düzenli</span></div>
+      <div class="stress-toggle"></div>
+      <div class="intensity-row">
+        <span class="intensity-label">yoğunluk</span>
+        <input type="range" min="1" max="10" value="5" oninput="setIntensity('drought_mild',this.value,this)" style="--c:#22d3ee">
+        <span class="intensity-val">5</span>
+      </div>
+    </div>
+
+    <div class="stress-card" id="sc-drought-severe" style="--c:#ef4444" onclick="toggleStress('drought_severe')">
+      <div class="stress-name">Susuzluk — şiddetli</div>
+      <div class="stress-meta"><span>ritim ~300ms</span><span>hızlı, acil</span></div>
+      <div class="stress-toggle"></div>
+      <div class="intensity-row">
+        <span class="intensity-label">yoğunluk</span>
+        <input type="range" min="1" max="10" value="7" oninput="setIntensity('drought_severe',this.value,this)" style="--c:#ef4444">
+        <span class="intensity-val">7</span>
+      </div>
+    </div>
+
+    <div class="stress-card" id="sc-ec" style="--c:#f59e0b" onclick="toggleStress('ec')">
+      <div class="stress-name">EC stresi</div>
+      <div class="stress-meta"><span>ritim ~150ms</span><span>tuzluluk yükü</span></div>
+      <div class="stress-toggle"></div>
+      <div class="intensity-row">
+        <span class="intensity-label">yoğunluk</span>
+        <input type="range" min="1" max="10" value="5" oninput="setIntensity('ec',this.value,this)" style="--c:#f59e0b">
+        <span class="intensity-val">5</span>
+      </div>
+    </div>
+
+    <div class="stress-card" id="sc-insect" style="--c:#a855f7" onclick="toggleStress('insect')">
+      <div class="stress-name">Böcek ısırığı</div>
+      <div class="stress-meta"><span>ritim ~40ms</span><span>ani burst</span></div>
+      <div class="stress-toggle"></div>
+      <div class="intensity-row">
+        <span class="intensity-label">yoğunluk</span>
+        <input type="range" min="1" max="10" value="8" oninput="setIntensity('insect',this.value,this)" style="--c:#a855f7">
+        <span class="intensity-val">8</span>
+      </div>
+    </div>
+
+    <div class="stress-card" id="sc-heat" style="--c:#f97316" onclick="toggleStress('heat')">
+      <div class="stress-name">Sıcaklık stresi</div>
+      <div class="stress-meta"><span>ritim ~500ms</span><span>orta tempo</span></div>
+      <div class="stress-toggle"></div>
+      <div class="intensity-row">
+        <span class="intensity-label">yoğunluk</span>
+        <input type="range" min="1" max="10" value="5" oninput="setIntensity('heat',this.value,this)" style="--c:#f97316">
+        <span class="intensity-val">5</span>
+      </div>
+    </div>
+
+    <div class="stress-card" id="sc-rest" style="--c:#10b981" onclick="toggleStress('rest')">
+      <div class="stress-name">Dinlenme</div>
+      <div class="stress-meta"><span>ritim ~2000ms</span><span>çok yavaş</span></div>
+      <div class="stress-toggle"></div>
+      <div class="intensity-row">
+        <span class="intensity-label">yoğunluk</span>
+        <input type="range" min="1" max="10" value="3" oninput="setIntensity('rest',this.value,this)" style="--c:#10b981">
+        <span class="intensity-val">3</span>
+      </div>
+    </div>
+
+    <div class="stress-card" id="sc-fungus" style="--c:#84cc16" onclick="toggleStress('fungus')">
+      <div class="stress-name">Fungus / kök hasarı</div>
+      <div class="stress-meta"><span>ritim ~1200ms</span><span>düzensiz</span></div>
+      <div class="stress-toggle"></div>
+      <div class="intensity-row">
+        <span class="intensity-label">yoğunluk</span>
+        <input type="range" min="1" max="10" value="5" oninput="setIntensity('fungus',this.value,this)" style="--c:#84cc16">
+        <span class="intensity-val">5</span>
+      </div>
+    </div>
+
+    <div style="margin-top:8px; padding-top:12px; border-top:1px solid var(--border)">
+      <div class="panel-label" style="margin-bottom:8px">sistem</div>
+      <button onclick="openLearningMap()" style="width:100%;padding:8px;margin-bottom:6px;background:var(--border);border:1px solid #22d3ee44;border-radius:6px;color:#22d3ee;font-family:var(--mono);font-size:10px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#22d3ee18'" onmouseout="this.style.background='var(--border)'">
+        ◉ öğrenme haritası
+      </button>
+      <button onclick="openPatternMap()" style="width:100%;padding:8px;margin-bottom:6px;background:var(--border);border:1px solid #a855f744;border-radius:6px;color:#a855f7;font-family:var(--mono);font-size:10px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#a855f718'" onmouseout="this.style.background='var(--border)'">
+        ◈ örüntü haritası
+      </button>
+      <button id="sensorlessBtn" onclick="toggleSensorlessMode()" style="width:100%;padding:8px;margin-bottom:6px;background:var(--border);border:1px solid #ef444444;border-radius:6px;color:#ef4444;font-family:var(--mono);font-size:10px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#ef444418'" onmouseout="this.style.background='var(--border)'">
+        ⊗ sensörsüz mod (kapalı)
+      </button>
+      <button onclick="resetNetwork()" style="width:100%;padding:8px;background:var(--border);border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-family:var(--mono);font-size:10px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='var(--border2)'" onmouseout="this.style.background='var(--border)'">
+        ↺ ağı sıfırla
+      </button>
+    </div>
+  </div>
+
+  <!-- SINYAL + NÖRON GRAFİĞİ -->
+  <div class="panel signal-panel">
+
+    <div class="chord-panel" id="chordPanel">
+      <div class="chord-box" id="cb-A" style="--c:#ef4444"><div class="chord-letter">A</div><div class="chord-tau">≤50ms</div></div>
+      <div class="chord-box" id="cb-B" style="--c:#f97316"><div class="chord-letter">B</div><div class="chord-tau">≤150ms</div></div>
+      <div class="chord-box" id="cb-C" style="--c:#f59e0b"><div class="chord-letter">C</div><div class="chord-tau">≤400ms</div></div>
+      <div class="chord-box" id="cb-D" style="--c:#22c55e"><div class="chord-letter">D</div><div class="chord-tau">≤1.2s</div></div>
+      <div class="chord-box" id="cb-E" style="--c:#22d3ee"><div class="chord-letter">E</div><div class="chord-tau">≤3s</div></div>
+      <div class="chord-box" id="cb-F" style="--c:#a855f7"><div class="chord-letter">F</div><div class="chord-tau">≤8s</div></div>
+    </div>
+
+    <div class="graph-header">
+      <span class="graph-title">bitki sinyal akışı</span>
+      <div class="graph-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>ham sinyal</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>spike an</div>
+      </div>
+    </div>
+    <canvas id="signalCanvas" height="130"></canvas>
+
+    <div class="graph-header" style="border-top:1px solid var(--border)">
+      <span class="graph-title">nöron ateşlemeleri</span>
+      <div class="graph-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>A bant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>B</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>C</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>D</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#22d3ee"></div>E</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>F</div>
+      </div>
+    </div>
+    <canvas id="neuronCanvas" height="130"></canvas>
+
+    <!-- ÜST SATIR: log + bant durumu -->
+    <div class="log-section" style="grid-template-columns:1fr 220px">
+      <div class="log-panel" id="logPanel">
+        <div class="log-entry"><span class="ts">00:00</span><span class="stress">sistem başlatıldı — 1000 nöron, tau=[5ms, 8000ms]</span></div>
+      </div>
+      <div class="band-panel">
+        <div class="panel-label">bant durumu</div>
+        <div class="band-row"><span class="band-name" style="color:#ef4444">A</span><div class="band-bar-bg"><div class="band-bar-fill" id="bb-A" style="background:#ef4444"></div></div><span class="band-tau">5–50ms</span><span class="band-winner" id="bw-A" style="color:#ef4444">—</span></div>
+        <div class="band-row"><span class="band-name" style="color:#f97316">B</span><div class="band-bar-bg"><div class="band-bar-fill" id="bb-B" style="background:#f97316"></div></div><span class="band-tau">50–150ms</span><span class="band-winner" id="bw-B" style="color:#f97316">—</span></div>
+        <div class="band-row"><span class="band-name" style="color:#f59e0b">C</span><div class="band-bar-bg"><div class="band-bar-fill" id="bb-C" style="background:#f59e0b"></div></div><span class="band-tau">150–400ms</span><span class="band-winner" id="bw-C" style="color:#f59e0b">—</span></div>
+        <div class="band-row"><span class="band-name" style="color:#22c55e">D</span><div class="band-bar-bg"><div class="band-bar-fill" id="bb-D" style="background:#22c55e"></div></div><span class="band-tau">400ms–1.2s</span><span class="band-winner" id="bw-D" style="color:#22c55e">—</span></div>
+        <div class="band-row"><span class="band-name" style="color:#22d3ee">E</span><div class="band-bar-bg"><div class="band-bar-fill" id="bb-E" style="background:#22d3ee"></div></div><span class="band-tau">1.2s–3s</span><span class="band-winner" id="bw-E" style="color:#22d3ee">—</span></div>
+        <div class="band-row"><span class="band-name" style="color:#a855f7">F</span><div class="band-bar-bg"><div class="band-bar-fill" id="bb-F" style="background:#a855f7"></div></div><span class="band-tau">3s–8s</span><span class="band-winner" id="bw-F" style="color:#a855f7">—</span></div>
+        <div id="patternList" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- ALT ŞERİT: anlık sensörler + sistem tahmini — geniş, nefes alan alan -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border)">
+
+      <!-- SENSÖR PANELİ -->
+      <div style="padding:14px 18px;border-right:1px solid var(--border)">
+        <div class="panel-label" style="margin-bottom:10px;font-size:10px;letter-spacing:.1em">anlık sensörler</div>
+        <div id="sensorPanel" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
+      </div>
+
+      <!-- TAHMİN PANELİ -->
+      <div style="padding:14px 18px">
+        <div class="panel-label" style="margin-bottom:10px;font-size:10px;letter-spacing:.1em">sistem tahmini</div>
+        <div id="predictionPanel"><div style="color:#484f58;font-size:10px;font-family:var(--mono)">veri bekleniyor...</div></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── SABITLER ──────────────────────────────────────────────
+const N = 1000;
+const TAU_MIN = 5, TAU_MAX = 8000;
+const BASE_POWER = 120;
+const W_MAX = 5.0, W_MIN = 0.1;
+const ETA = 0.12, RHO = 1.5, LAMBDA = 0.15, EPS = 1e-6; // LAMBDA: 0.5→0.15 (S freni azaldı)
+// v4 sabitleri
+const ETA_NEG = 0.15;        // negatif öğrenme: 0.04→0.15 (daha sert zayıflatma)
+const W_DECAY = 0.000025;    // pasif sönüm
+const CO_WINDOW_MS = 300;
+const CO_THRESHOLD = 3;
+const CYCLE_MS = 50;
+const GRAPH_LEN = 300;
+const SENSOR_MEMORY = 30;  // her nöron son kaç ateşlemedeki sensör ortalamasını tutsun
+const BASELINE_SAMPLES = 20; // ilk N ateşlemede baz durum öğrenilir, sonra sabitlenir
+
+const BAND_COLORS = { A:'#ef4444', B:'#f97316', C:'#f59e0b', D:'#22c55e', E:'#22d3ee', F:'#a855f7' };
+
+// ─── STRES TANIMLARI ──────────────────────────────────────
+const STRESS_DEF = {
+  drought_mild:   { baseMs: 800,  jitter: 0.25, bursts: 1 },
+  drought_severe: { baseMs: 300,  jitter: 0.20, bursts: 1 },
+  ec:             { baseMs: 150,  jitter: 0.15, bursts: 2 },
+  insect:         { baseMs: 40,   jitter: 0.30, bursts: 4 },
+  heat:           { baseMs: 500,  jitter: 0.20, bursts: 1 },
+  rest:           { baseMs: 2000, jitter: 0.10, bursts: 1 },
+  fungus:         { baseMs: 1200, jitter: 0.40, bursts: 1 },
+};
+
+// ─── SENARYO SENSÖR PROFİLLERİ ──────────────────────────
+// Her senaryo aktifken sensörlerin baz değeri
+// Gerçek sistemde GPIO/SPI sensörlerden okunacak
+const SCENARIO_SENSORS = {
+  // Her senaryo birbirinden net ayrışan profiller
+  // En ayırt edici sensörler yorumla belirtildi
+  rest: {
+    // Normal: orta nem, normal sıcaklık, normal EC/pH
+    soil_moisture: 55, soil_temp: 19, air_temp: 21, air_humidity: 65,
+    ec: 1100, ph: 6.8, n: 140, p: 45, k: 180
+  },
+  drought_mild: {
+    // Hafif kuraklık: düşük toprak nemi (28), hafif yüksek sıcaklık
+    soil_moisture: 28, soil_temp: 24, air_temp: 27, air_humidity: 38,
+    ec: 1500, ph: 7.0, n: 125, p: 38, k: 165
+  },
+  drought_severe: {
+    // Şiddetli kuraklık: çok düşük nem (10), yüksek sıcaklık
+    soil_moisture: 10, soil_temp: 30, air_temp: 33, air_humidity: 22,
+    ec: 1800, ph: 7.2, n: 110, p: 30, k: 145
+  },
+  ec: {
+    // EC stresi: normal nem/sıcaklık ama EC çok yüksek (2600), yüksek NPK
+    soil_moisture: 52, soil_temp: 20, air_temp: 22, air_humidity: 61,
+    ec: 2600, ph: 7.4, n: 195, p: 72, k: 310
+  },
+  insect: {
+    // Böcek: normal sensörler ama N düşük (bitki besin kaybı), pH hafif düşük
+    soil_moisture: 53, soil_temp: 21, air_temp: 23, air_humidity: 63,
+    ec: 900, ph: 6.3, n: 85, p: 28, k: 110
+  },
+  heat: {
+    // Sıcaklık: toprak nemi orta-düşük, hava sıcaklığı çok yüksek (38)
+    soil_moisture: 38, soil_temp: 34, air_temp: 38, air_humidity: 30,
+    ec: 1350, ph: 6.7, n: 120, p: 36, k: 158
+  },
+  fungus: {
+    // Fungus: yüksek nem (78), düşük sıcaklık, düşük EC, asit pH
+    soil_moisture: 78, soil_temp: 17, air_temp: 19, air_humidity: 92,
+    ec: 700, ph: 5.6, n: 80, p: 24, k: 105
+  },
+};
+
+// Her sensörün ayırt edici gücü — yüksek = tahminде daha çok ağırlık
+const SENSOR_WEIGHTS = {
+  soil_moisture: 2.5,  // kuraklık/fungus için çok kritik
+  soil_temp:     1.5,
+  air_temp:      1.5,
+  air_humidity:  2.0,  // fungus için kritik
+  ec:            2.5,  // EC stresi için çok kritik
+  ph:            2.0,  // fungus/EC için kritik
+  n:             2.0,  // böcek için kritik (bitki besin kaybı)
+  p:             1.5,
+  k:             1.5,
+};
+
+const SENSOR_LABELS = {
+  soil_moisture: { label: 'Toprak Nemi', unit: '%',    min:0,   max:100  },
+  soil_temp:     { label: 'Toprak Sıc.', unit: '°C',  min:5,   max:45   },
+  air_temp:      { label: 'Hava Sıc.',   unit: '°C',  min:5,   max:45   },
+  air_humidity:  { label: 'Hava Nemi',   unit: '%',   min:0,   max:100  },
+  ec:            { label: 'EC',          unit: 'µS',  min:200, max:3000 },
+  ph:            { label: 'pH',          unit: '',    min:4,   max:9    },
+  n:             { label: 'Azot (N)',    unit: 'ppm', min:0,   max:300  },
+  p:             { label: 'Fosfor (P)',  unit: 'ppm', min:0,   max:150  },
+  k:             { label: 'Potasyum(K)', unit: 'ppm', min:0,   max:400  },
+};
+
+// Anlık sensör değerleri (aktif senaryoların ağırlıklı ortalaması)
+let currentSensors = {
+  soil_moisture: 55, soil_temp: 19, air_temp: 21, air_humidity: 65,
+  ec: 1200, ph: 6.8, n: 140, p: 45, k: 180
+};
+
+// ─── AĞ DURUMU ────────────────────────────────────────────
+let neurons = [];
+// v2: her stres kaynağı kendi r_pre ve lastSpikeTime tutuyor
+let stressState = {};
+let iteration = 0;
+let totalFires = 0;
+let chordTimers = { A:0, B:0, C:0, D:0, E:0, F:0 };
+
+// ─── AKTİF STRESLER ───────────────────────────────────────
+let activeStress = {};
+let stressTimers = {};
+let stressIntensity = {
+  drought_mild:5, drought_severe:7, ec:5, insect:8, heat:5, rest:3, fungus:5
+};
+
+// ─── ÖRÜNTÜ HAFIZASI (Sorun 2 düzeltmesi) ────────────────
+let coActivationMap = {};
+let lastFireTime = {};
+
+// ─── ÖĞRENME HARİTASI VERİSİ ─────────────────────────────
+// neuronStressLog[stressKey][neuronId] = { fires, totalDw, lastW, band, tau }
+let neuronStressLog = {};
+let lmActiveTab = null;
+
+// ─── GRAFİK VERİSİ ────────────────────────────────────────
+let signalBuffer = new Array(GRAPH_LEN).fill(0);
+let spikeBuffer  = [];
+let lastFireEvents = [];
+
+// ─── SENSÖRSÜZ MOD ────────────────────────────────────────
+let sensorlessMode = false;
+function toggleSensorlessMode() {
+  sensorlessMode = !sensorlessMode;
+  const btn = document.getElementById('sensorlessBtn');
+  if (sensorlessMode) {
+    btn.textContent = '⊙ sensörsüz mod (AKTİF)';
+    btn.style.borderColor = '#10b98155';
+    btn.style.color = '#10b981';
+    btn.onmouseover = () => btn.style.background = '#10b98118';
+    addLog('stress', '⊗ SENSÖRSÜZ MOD — tahmin sadece nöron örüntüsünden yapılıyor');
+  } else {
+    btn.textContent = '⊗ sensörsüz mod (kapalı)';
+    btn.style.borderColor = '#ef444444';
+    btn.style.color = '#ef4444';
+    btn.onmouseover = () => btn.style.background = '#ef444418';
+    addLog('stress', '⊙ sensörlü mod — sensör+nöron birlikte çalışıyor');
+  }
+  btn.onmouseout = () => btn.style.background = 'var(--border)';
+}
+
+function tauToBand(t) {
+  if (t <= 50)   return 'A';
+  if (t <= 150)  return 'B';
+  if (t <= 400)  return 'C';
+  if (t <= 1200) return 'D';
+  if (t <= 3000) return 'E';
+  return 'F';
+}
+
+// ─── AĞINI BAŞLAT ────────────────────────────────────────
+function initNetwork() {
+  neurons = [];
+  stressState = {};
+  coActivationMap = {};
+  lastFireTime = {};
+  neuronStressLog = {};
+  lmActiveTab = null;
+  const logMin = Math.log(TAU_MIN), logMax = Math.log(TAU_MAX);
+  for (let i = 0; i < N; i++) {
+    const step = i / (N - 1);
+    const tau  = Math.exp(logMin + step * (logMax - logMin));
+    // recRate: küçük tau = daha hızlı yenilenme
+    // A bandı (τ~5ms): 0.12 — böcek gibi hızlı streste tükenmez
+    // F bandı (τ~8000ms): 0.01 — yavaş yenilenir, yavaş streste çalışır
+    const recRate = 0.12 - step * 0.11; // A=0.12, F=0.01
+    neurons.push({
+      id: i + 1,
+      tau, thresh: 60.0,
+      w: 1.5,
+      v: 0,
+      R: 1.0,
+      recRate,
+      inhTimer: 0,
+      refTimer: 0,
+      band: tauToBand(tau),
+      r_post: 0,
+      fireCount: 0,
+      // Sensör hafızası: ateşlendiği andaki sensör değerlerinin ortalaması
+      sensorMem: null,      // { soil_moisture: avgVal, ... } — sürekli güncellenen hafıza
+      sensorSamples: 0,     // kaç örnek toplandı
+      baselineMem: null,    // ilk BASELINE_SAMPLES ateşlemede öğrenilen BAZ DURUM — sabit kalır
+      baselineLocked: false,// baz durum kilitlendi mi
+    });
+  }
+  iteration = 0;
+  totalFires = 0;
+  signalBuffer.fill(0);
+  spikeBuffer = [];
+  lastFireEvents = [];
+  Object.keys(chordTimers).forEach(k => chordTimers[k] = 0);
+  Object.keys(activeStress).forEach(k => {
+    stressState[k] = { r_pre: 0, lastSpikeTime: Date.now() };
+  });
+  addLog('stress', 'ağ sıfırlandı — 1000 nöron, v10: kompozit çıkarım + sensörsüz mod + NLG');
+  updateHeaderStats();
+  updatePatternDisplay();
+}
+
+// ─── 50ms ANA DÖNGÜ ──────────────────────────────────────
+function mainTick() {
+  const now = Date.now();
+  iteration++;
+
+  // Sensör değerlerini aktif senaryolara göre güncelle
+  updateCurrentSensors();
+
+  // Her stres kanalının r_pre'sini bağımsız sönümle
+  Object.keys(stressState).forEach(k => {
+    stressState[k].r_pre *= Math.exp(-CYCLE_MS / 50);
+  });
+
+  neurons.forEach(n => {
+    n.r_post *= Math.exp(-CYCLE_MS / 30);
+    if (n.inhTimer > 0) n.inhTimer -= CYCLE_MS;
+    if (n.refTimer > 0) n.refTimer -= CYCLE_MS;
+    if (n.R < 1.0) n.R = Math.min(1.0, n.R + n.recRate);
+    if (n.refTimer <= 0 && n.v > 0) {
+      n.v *= Math.exp(-CYCLE_MS / n.tau);
+      if (n.v < 0.5) n.v = 0;
+    }
+    // SORUN 1: pasif bağ sönümü — kullanılmayan bağlar zayıflar
+    if (n.w > W_MIN) {
+      n.w = Math.max(W_MIN, n.w - W_DECAY);
+    }
+  });
+
+  // chord timer
+  Object.keys(chordTimers).forEach(k => {
+    if (chordTimers[k] > 0) {
+      chordTimers[k] -= CYCLE_MS;
+      if (chordTimers[k] <= 0) {
+        document.getElementById('cb-' + k).classList.remove('lit');
+      }
+    }
+  });
+
+  // SORUN 3: Her stres kanalı bağımsız spike üretiyor
+  const firedChannels = generateStressSpikes(now);
+  let anyFired = false;
+  firedChannels.forEach(key => {
+    anyFired = true;
+    processSpikeIntoSNN(key, now);
+  });
+
+  signalBuffer.push(anyFired ? 1 : 0);
+  if (signalBuffer.length > GRAPH_LEN) signalBuffer.shift();
+
+  if (iteration % 20 === 0) updateBandBars();
+  if (iteration % 30 === 0) updatePatternDisplay();
+  renderPredictionPanel();
+  updateHeaderStats();
+  drawSensorPanel();
+  drawGraphs();
+}
+
+// ─── SENSÖR GÜNCELLEME ───────────────────────────────────
+function updateCurrentSensors() {
+  const active = Object.keys(activeStress);
+  if (active.length === 0) {
+    // Aktif stres yoksa dinlenme değerleri
+    Object.assign(currentSensors, SCENARIO_SENSORS.rest);
+    return;
+  }
+  // Aktif senaryoların ağırlıklı ortalaması + biraz gürültü
+  const keys = Object.keys(SENSOR_LABELS);
+  keys.forEach(sk => {
+    let sum = 0, count = 0;
+    active.forEach(sc => {
+      if (SCENARIO_SENSORS[sc]) { sum += SCENARIO_SENSORS[sc][sk]; count++; }
+    });
+    if (count > 0) {
+      const base = sum / count;
+      const noise = (Math.random() - 0.5) * base * 0.03; // %3 gürültü
+      currentSensors[sk] = base + noise;
+    }
+  });
+}
+
+// ─── ÇOKLU STRES SİNYALİ (Sorun 3 düzeltmesi) ───────────
+function generateStressSpikes(now) {
+  const firedKeys = [];
+  if (Object.keys(activeStress).length === 0) return firedKeys;
+
+  for (const [key, active] of Object.entries(activeStress)) {
+    if (!active) continue;
+    const def = STRESS_DEF[key];
+    const intensity = stressIntensity[key];
+
+    if (!stressState[key]) {
+      stressState[key] = { r_pre: 0, lastSpikeTime: now };
+    }
+
+    let channelFired = false;
+
+    if (!stressTimers[key] || now >= stressTimers[key]) {
+      const jitter = (Math.random() * 2 - 1) * def.jitter;
+      const nextInterval = def.baseMs * (1 + jitter) * (11 - intensity) / 6;
+      for (let b = 0; b < def.bursts; b++) {
+        stressTimers[key + '_b' + b] = now + b * (def.baseMs * 0.15);
+      }
+      stressTimers[key] = now + nextInterval;
+      channelFired = true;
+    }
+    for (let b = 0; b < def.bursts; b++) {
+      const bk = key + '_b' + b;
+      if (stressTimers[bk] && now >= stressTimers[bk]) {
+        delete stressTimers[bk];
+        channelFired = true;
+      }
+    }
+
+    if (channelFired) {
+      stressState[key].r_pre = 1.0;
+      // lastSpikeTime burada set edilmiyor — processSpikeIntoSNN'de güncellenir
+      firedKeys.push(key);
+    }
+  }
+  return firedKeys;
+}
+
+// ─── ÖĞRENME HARİTASI KAYIT ───────────────────────────────
+function recordNeuronFire(stressKey, neuron, dw) {
+  if (!neuronStressLog[stressKey]) neuronStressLog[stressKey] = {};
+  const log = neuronStressLog[stressKey];
+  if (!log[neuron.id]) {
+    log[neuron.id] = {
+      fires: 0, totalDw: 0, lastW: neuron.w, band: neuron.band, tau: neuron.tau,
+      // Stres başına ayrı sensör hafızası — karışma olmaz
+      sensorMem: { ...currentSensors },
+      sensorSamples: 0,
+    };
+  }
+  const entry = log[neuron.id];
+  entry.fires++;
+  entry.totalDw += dw;
+  entry.lastW = neuron.w;
+
+  // Kayan ortalama: sadece bu stres sırasındaki sensör değerlerini öğren
+  const alpha = 1 / Math.min(entry.sensorSamples + 1, SENSOR_MEMORY);
+  Object.keys(currentSensors).forEach(sk => {
+    entry.sensorMem[sk] = entry.sensorMem[sk] * (1 - alpha) + currentSensors[sk] * alpha;
+  });
+  entry.sensorSamples = Math.min(entry.sensorSamples + 1, SENSOR_MEMORY);
+
+  // Nöron üzerindeki genel sensorMem'i de güncelle (UI / baseline için kullanılıyor)
+  const n = neuron;
+  if (!n.sensorMem) {
+    n.sensorMem = { ...currentSensors };
+    n.sensorSamples = 1;
+  } else {
+    const a2 = 1 / Math.min(n.sensorSamples + 1, SENSOR_MEMORY);
+    Object.keys(currentSensors).forEach(sk => {
+      n.sensorMem[sk] = n.sensorMem[sk] * (1 - a2) + currentSensors[sk] * a2;
+    });
+    n.sensorSamples = Math.min(n.sensorSamples + 1, SENSOR_MEMORY);
+  }
+
+  // Baz durum: SADECE dinlenme (rest) sırasındaki ilk ateşlemelerde öğren
+  if (!n.baselineLocked && stressKey === 'rest') {
+    if (!n.baselineMem) {
+      n.baselineMem = { ...currentSensors };
+      n.baselineSamples = 1;
+    } else {
+      n.baselineSamples = (n.baselineSamples || 1) + 1;
+      const alpha = 1 / Math.min(n.baselineSamples, BASELINE_SAMPLES);
+      Object.keys(currentSensors).forEach(sk => {
+        n.baselineMem[sk] = n.baselineMem[sk] * (1 - alpha) + currentSensors[sk] * alpha;
+      });
+    }
+    if ((n.baselineSamples || 0) >= BASELINE_SAMPLES) n.baselineLocked = true;
+  }
+  if (!n.baselineLocked && !n.baselineMem && stressKey !== 'rest') {
+    n.baselineMem = { ...currentSensors };
+    n.baselineSamples = 1;
+  }
+}
+
+// ─── SNN İŞLEME ──────────────────────────────────────────
+function processSpikeIntoSNN(stressKey, now) {
+  const st = stressState[stressKey];
+  // Önceki spike zamanını kullanarak deltaT hesapla, SONRA güncelle
+  const prevTime = st.lastSpikeTime || (now - STRESS_DEF[stressKey].baseMs);
+  const deltaT = Math.max(50, now - prevTime);
+  st.lastSpikeTime = now;
+  const r_pre = st.r_pre;
+
+  const sigma_scale = 0.2; // daralttık: 97 nöron örtüşme → 0
+  let candidates = [];
+
+  neurons.forEach(n => {
+    if (n.inhTimer > 0 || n.refTimer > 0) return;
+    const readiness = 1.0 - Math.exp(-deltaT / n.tau);
+    const sigma = Math.max(n.tau * sigma_scale, 10);
+    const resonance = Math.exp(-Math.pow((deltaT - n.tau) / sigma, 2));
+    const power = BASE_POWER * readiness * resonance * n.w * n.R;
+    n.v += power;
+    // R tüketimi: 0.04 — böcek gibi hızlı streste R stabil kalır
+    n.R = Math.max(0, n.R - 0.04);
+    if (n.v >= n.thresh) candidates.push(n);
+  });
+
+  if (candidates.length === 0) return;
+
+  const bandWinners = {};
+  candidates.forEach(n => {
+    if (!bandWinners[n.band] || n.v > bandWinners[n.band].v) {
+      bandWinners[n.band] = n;
+    }
+  });
+
+  const winners = Object.values(bandWinners);
+  const globalWinner = winners.reduce((a, b) => a.v > b.v ? a : b);
+
+  // Lateral inhibisyon — SADECE winner'ın kendi bandındaki rakip nöronları sustur.
+  // Farklı bandlardaki winner'lara dokunma → çoklu stres aynı anda çalışabilsin.
+  // Sorun: eski kod globalWinner.tau*0.3 eşiği ile tüm kısa-tau nöronları susturuyordu,
+  // fungus/dinlenme sonrası güçlü D/E/F winner gelince A bandı (böcek) kilitleniyor.
+  neurons.forEach(n => {
+    if (winners.includes(n)) return; // winner'lara dokunma
+    if (n.band === globalWinner.band) {
+      n.inhTimer = globalWinner.tau * 0.4;
+      n.v = 0;
+    }
+  });
+
+  winners.forEach(winner => {
+    winner.r_post = 1.0;
+    const oldW = winner.w;
+
+    // SORUN 1 DÜZELTMESİ: zamanlama kalitesine göre artır ya da azalt
+    const corel = r_pre * winner.r_post;
+    const Q = corel * corel;
+    const G = Math.log(1 + RHO * corel / (r_pre + winner.r_post + EPS));
+    const S = (1 / (1 + Math.exp(-(W_MAX - Math.abs(winner.w))))) * Math.exp(-LAMBDA * winner.w * winner.w);
+
+    let dw;
+    if (r_pre > 0.5) {
+      // İyi zamanlama: bağ artır (r_pre eşiği 0.3→0.5, daha katı)
+      dw = ETA * G * Q * S;
+      winner.w = Math.min(W_MAX, winner.w + dw);
+    } else {
+      // Kötü zamanlama: bağ sert zayıflat
+      // ETA_NEG 0.04→0.15 — yanlış nöronlar daha hızlı silinir
+      dw = -ETA_NEG * (1.0 - Q) * 0.3;
+      winner.w = Math.max(W_MIN, winner.w + dw);
+    }
+
+    winner.v = 0;
+    winner.refTimer = winner.tau * 0.5;
+    winner.fireCount = (winner.fireCount || 0) + 1;
+    chordTimers[winner.band] = 1500;
+    totalFires++;
+
+    // Öğrenme haritası için kayıt
+    recordNeuronFire(stressKey, winner, dw);
+
+    // SORUN 2: Ko-aktivasyon kaydı
+    const nowMs = Date.now();
+    // Aynı tick'te birlikte ateşlenen winner'lar
+    winners.forEach(other => {
+      if (other.id === winner.id) return;
+      const ckey = winner.id < other.id
+        ? `N${winner.id}+N${other.id}`
+        : `N${other.id}+N${winner.id}`;
+      if (!coActivationMap[ckey]) coActivationMap[ckey] = { count: 0, lastSeen: nowMs, strength: 0 };
+      coActivationMap[ckey].count++;
+      coActivationMap[ckey].lastSeen = nowMs;
+      coActivationMap[ckey].strength = Math.min(1.0, coActivationMap[ckey].count / 20);
+    });
+    // Yakın zamanda (300ms) ateşlenen nöronlarla
+    Object.keys(lastFireTime).forEach(otherId => {
+      const timeDiff = nowMs - lastFireTime[otherId];
+      if (timeDiff < CO_WINDOW_MS && parseInt(otherId) !== winner.id) {
+        const a = winner.id, b = parseInt(otherId);
+        const ckey = a < b ? `N${a}+N${b}` : `N${b}+N${a}`;
+        if (!coActivationMap[ckey]) coActivationMap[ckey] = { count: 0, lastSeen: nowMs, strength: 0 };
+        coActivationMap[ckey].count++;
+        coActivationMap[ckey].lastSeen = nowMs;
+        coActivationMap[ckey].strength = Math.min(1.0, coActivationMap[ckey].count / 20);
+      }
+    });
+    lastFireTime[winner.id] = nowMs;
+
+    document.getElementById('cb-' + winner.band).classList.add('lit');
+    setTimeout(() => document.getElementById('cb-' + winner.band).classList.remove('lit'), 1500);
+
+    spikeBuffer.push({ t: nowMs, band: winner.band, nId: winner.id, w: winner.w });
+    if (spikeBuffer.length > 200) spikeBuffer.shift();
+
+    lastFireEvents.unshift({ band: winner.band, nId: winner.id, dt: deltaT, oldW, newW: winner.w, stress: stressKey });
+    if (lastFireEvents.length > 50) lastFireEvents.pop();
+
+    const dwStr = dw >= 0 ? `+${dw.toFixed(3)}` : dw.toFixed(3);
+    const timing = r_pre > 0.3 ? '↑' : '↓';
+    addLog('fire', `N${winner.id} [${winner.band} τ=${winner.tau.toFixed(0)}ms] ${stressKey} — w:${oldW.toFixed(2)}→${winner.w.toFixed(2)} ${timing}${dwStr}`);
+
+    const pct = Math.min(100, (winner.w / W_MAX) * 100);
+    document.getElementById('bb-' + winner.band).style.width = pct + '%';
+    document.getElementById('bw-' + winner.band).textContent = 'N' + winner.id;
+  });
+}
+
+// ─── GRAFİK ÇİZİM ────────────────────────────────────────
+const sigCanvas = document.getElementById('signalCanvas');
+const neuCanvas = document.getElementById('neuronCanvas');
+const sigCtx = sigCanvas.getContext('2d');
+const neuCtx = neuCanvas.getContext('2d');
+
+function resizeCanvases() {
+  sigCanvas.width = sigCanvas.parentElement.clientWidth;
+  neuCanvas.width = neuCanvas.parentElement.clientWidth;
+}
+resizeCanvases();
+
+function drawGraphs() {
+  const W = sigCanvas.width, SH = sigCanvas.height, NH = neuCanvas.height;
+
+  sigCtx.clearRect(0, 0, W, SH);
+  sigCtx.fillStyle = '#080b0f';
+  sigCtx.fillRect(0, 0, W, SH);
+
+  sigCtx.strokeStyle = '#1e2d3d';
+  sigCtx.lineWidth = 0.5;
+  [0.25, 0.5, 0.75].forEach(y => {
+    sigCtx.beginPath();
+    sigCtx.moveTo(0, y * SH);
+    sigCtx.lineTo(W, y * SH);
+    sigCtx.stroke();
+  });
+
+  const barW = W / GRAPH_LEN;
+  signalBuffer.forEach((val, i) => {
+    if (val > 0) {
+      const x = i * barW;
+      const grad = sigCtx.createLinearGradient(x, SH * 0.1, x, SH * 0.9);
+      grad.addColorStop(0, '#22d3ee');
+      grad.addColorStop(1, '#22d3ee22');
+      sigCtx.fillStyle = grad;
+      sigCtx.fillRect(x, SH * 0.1, Math.max(barW - 1, 1), SH * 0.8);
+    }
+  });
+
+  sigCtx.strokeStyle = '#22d3ee44';
+  sigCtx.lineWidth = 1;
+  sigCtx.beginPath();
+  const winSz = 8;
+  signalBuffer.forEach((_, i) => {
+    let sum = 0;
+    for (let j = Math.max(0, i-winSz); j <= i; j++) sum += signalBuffer[j];
+    const v = sum / winSz;
+    const x = i * barW;
+    const y = SH * (1 - v * 0.8) - SH * 0.05;
+    i === 0 ? sigCtx.moveTo(x, y) : sigCtx.lineTo(x, y);
+  });
+  sigCtx.stroke();
+
+  neuCtx.clearRect(0, 0, W, NH);
+  neuCtx.fillStyle = '#080b0f';
+  neuCtx.fillRect(0, 0, W, NH);
+
+  neuCtx.strokeStyle = '#1e2d3d';
+  neuCtx.lineWidth = 0.5;
+  Object.keys(BAND_COLORS).forEach((band, i) => {
+    const y = (i / 6) * NH;
+    neuCtx.beginPath();
+    neuCtx.moveTo(0, y);
+    neuCtx.lineTo(W, y);
+    neuCtx.stroke();
+    neuCtx.fillStyle = '#1e2d3d';
+    neuCtx.font = '9px JetBrains Mono';
+    neuCtx.fillText(band, 4, y + 10);
+  });
+
+  const nowT = Date.now();
+  const timeWindow = GRAPH_LEN * CYCLE_MS;
+  spikeBuffer.forEach(sp => {
+    const age = nowT - sp.t;
+    if (age > timeWindow) return;
+    const x = W - (age / timeWindow) * W;
+    const bandIdx = ['A','B','C','D','E','F'].indexOf(sp.band);
+    const y = (bandIdx / 6) * NH + NH / 12;
+    const alpha = Math.max(0, 1 - age / timeWindow);
+    const r = 2 + (sp.w / W_MAX) * 4;
+
+    neuCtx.beginPath();
+    neuCtx.arc(x, y, r, 0, Math.PI * 2);
+    neuCtx.fillStyle = BAND_COLORS[sp.band] + Math.round(alpha * 255).toString(16).padStart(2,'0');
+    neuCtx.fill();
+
+    neuCtx.strokeStyle = BAND_COLORS[sp.band] + Math.round(alpha * 100).toString(16).padStart(2,'0');
+    neuCtx.lineWidth = 0.5;
+    neuCtx.beginPath();
+    neuCtx.moveTo(x, 0);
+    neuCtx.lineTo(x, NH);
+    neuCtx.stroke();
+  });
+}
+
+// ─── SENSÖR PANELİ ────────────────────────────────────────
+function drawSensorPanel() {
+  const panel = document.getElementById('sensorPanel');
+  if (!panel) return;
+  const keys = Object.keys(SENSOR_LABELS);
+  let html = '';
+  keys.forEach(sk => {
+    const meta = SENSOR_LABELS[sk];
+    const val = currentSensors[sk];
+    const pct = Math.min(100, Math.max(0, (val - meta.min) / (meta.max - meta.min) * 100));
+    const col = pct < 20 || pct > 80 ? '#ef4444' : pct < 35 || pct > 65 ? '#f59e0b' : '#10b981';
+    html += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.06em">${meta.label}</span>
+        <span style="font-family:var(--mono);font-size:15px;color:${col};font-weight:600">${val.toFixed(1)}<span style="font-size:9px;color:var(--text3);font-weight:400;margin-left:2px">${meta.unit}</span></span>
+      </div>
+      <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${pct.toFixed(0)}%;background:${col};border-radius:2px;transition:width .3s"></div>
+      </div>
+    </div>`;
+  });
+  panel.innerHTML = html;
+}
+
+// ─── BANT BARLARI ─────────────────────────────────────────
+function updateBandBars() {
+  const bandMax = { A:0, B:0, C:0, D:0, E:0, F:0 };
+  neurons.forEach(n => {
+    if (n.w > bandMax[n.band]) bandMax[n.band] = n.w;
+  });
+  Object.keys(bandMax).forEach(band => {
+    const pct = Math.min(100, (bandMax[band] / W_MAX) * 100);
+    document.getElementById('bb-' + band).style.width = pct + '%';
+  });
+}
+
+// ─── ÖRÜNTÜ GÖRÜNTÜLEME ───────────────────────────────────
+function updatePatternDisplay() {
+  const el = document.getElementById('patternList');
+  if (!el) return;
+  const entries = Object.entries(coActivationMap)
+    .filter(([k, v]) => v.count >= CO_THRESHOLD)
+    .sort((a, b) => b[1].strength - a[1].strength)
+    .slice(0, 8);
+  if (entries.length === 0) {
+    el.textContent = '—';
+    return;
+  }
+  el.innerHTML = entries.map(([key, val]) => {
+    const bar = '█'.repeat(Math.round(val.strength * 8));
+    const col = val.strength > 0.6 ? '#10b981' : val.strength > 0.3 ? '#f59e0b' : '#8b949e';
+    return `<span style="color:${col}">${key} ×${val.count} ${bar}</span>`;
+  }).join('<br>');
+}
+
+// ─── LOG ─────────────────────────────────────────────────
+function addLog(type, msg) {
+  const panel = document.getElementById('logPanel');
+  const t = new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = `<span class="ts">${t}</span><span class="${type}">${msg}</span>`;
+  panel.insertBefore(div, panel.firstChild);
+  while (panel.children.length > 80) panel.removeChild(panel.lastChild);
+}
+
+// ─── HEADER STAT ─────────────────────────────────────────
+function updateHeaderStats() {
+  document.getElementById('hdr-iter').textContent = iteration;
+  document.getElementById('hdr-fire').textContent = totalFires;
+  const maxW = Math.max(...neurons.map(n => n.w));
+  document.getElementById('hdr-w').textContent = maxW.toFixed(2);
+  if (lastFireEvents.length > 0) {
+    document.getElementById('hdr-dt').textContent = lastFireEvents[0].dt + 'ms';
+  }
+}
+
+// ─── KONTROLLER ──────────────────────────────────────────
+function toggleStress(key) {
+  if (activeStress[key]) {
+    delete activeStress[key];
+    delete stressState[key];
+    document.getElementById('sc-' + key.replace('_','-')).classList.remove('active');
+    addLog('stress', key + ' stresi devre dışı');
+  } else {
+    activeStress[key] = true;
+    stressTimers[key] = Date.now();
+    stressState[key] = { r_pre: 0, lastSpikeTime: Date.now() };
+    document.getElementById('sc-' + key.replace('_','-')).classList.add('active');
+    addLog('stress', key + ' stresi aktifleşti — ritim: ~' + STRESS_DEF[key].baseMs + 'ms');
+  }
+}
+
+function setIntensity(key, val, input) {
+  stressIntensity[key] = parseInt(val);
+  input.nextElementSibling.textContent = val;
+}
+
+function resetNetwork() {
+  Object.keys(activeStress).forEach(k => {
+    delete activeStress[k];
+    document.getElementById('sc-' + k.replace('_','-')).classList.remove('active');
+  });
+  stressTimers = {};
+  lastPredictionResult = null;
+  initNetwork();
+}
+
+// ─── TAHMİN SİSTEMİ v10 — KOMPOZİT ÇIKARIM MOTORU ─────────
+//
+// MİMARİ:
+// Katman 1: Nöron seçimi — son 5s'de ateşlenen + bağ gücüne göre ağırlıklı
+// Katman 2: Her stres için bağımsız sensör mesafesi (sensorless modda atlanır)
+// Katman 3: Ko-aktivasyon kombinasyon bonusu — N17+N234 örüntüsü hangi
+//           stres çiftine işaret ediyor → kombinasyon skoru eklenir
+// Katman 4: Tüm eşik üstü stresler aynı anda aktif → kompozit liste
+// Katman 5: NLG — Türkçe doğal cümle üretimi
+//
+// SENSÖRSÜZ MOD: Katman 2 atlanır, sadece nöron örüntüsü + ko-aktivasyon
+// ile tahmin yapılır (sahada gerçek kullanım simülasyonu).
+
+let lastPredictionResult = null;
+
+const STRESS_META = {
+  drought_mild:   { label: 'Hafif Kuraklık',     emoji: '🟡', color: '#22d3ee',  short: 'hafif kuraklık' },
+  drought_severe: { label: 'Şiddetli Kuraklık',  emoji: '🔴', color: '#ef4444',  short: 'ciddi kuraklık' },
+  ec:             { label: 'EC / Tuz Stresi',     emoji: '🟠', color: '#f59e0b',  short: 'EC-tuz stresi' },
+  insect:         { label: 'Böcek / Besin Kaybı', emoji: '🟣', color: '#a855f7',  short: 'böcek ya da kök saldırısı' },
+  heat:           { label: 'Sıcaklık Stresi',     emoji: '🔥', color: '#f97316',  short: 'sıcaklık stresi' },
+  rest:           { label: 'Dinlenme / Normal',   emoji: '✅', color: '#10b981',  short: 'normal' },
+  fungus:         { label: 'Fungus / Aşırı Nem',  emoji: '🟢', color: '#84cc16',  short: 'fungus ya da aşırı nem' },
+};
+
+// Ko-aktivasyon tabanlı kombinasyon tespiti
+// Hangi stres çiftleri birlikte gelince nöron grupları nasıl örtüşüyor?
+// Bu bölüm ileriki versiyonda gerçek eğitim verisiyle doldurulabilir.
+// Şu an: nöron bantlarının kombinasyonundan heuristik çıkarım yapıyoruz.
+function getCoActivationCombinationBonus(nIds, stressScores) {
+  // Bant dağılımına bak: hangi bantlar aynı anda aktifse stres kombinasyonuna ipucu var
+  const bandCounts = { A:0, B:0, C:0, D:0, E:0, F:0 };
+  nIds.forEach(nId => {
+    const n = neurons[nId - 1];
+    if (n) bandCounts[n.band] = (bandCounts[n.band] || 0) + 1;
+  });
+  const totalActive = nIds.length;
+  if (totalActive === 0) return {};
+
+  const bandRatios = {};
+  Object.keys(bandCounts).forEach(b => { bandRatios[b] = bandCounts[b] / totalActive; });
+
+  // Ko-aktivasyon haritasında aynı anda ateşlenen çiftlerin bant çeşitliliğine bak
+  // Yüksek bant çeşitliliği = birden fazla stres aktif işareti
+  const bandDiversity = Object.values(bandRatios).filter(r => r > 0.05).length;
+
+  const bonus = {};
+  // A+D/E/F bantları birlikte → böcek + başka bir şey (böcek hızlı, diğeri yavaş)
+  if (bandRatios['A'] > 0.1 && (bandRatios['D'] > 0.1 || bandRatios['E'] > 0.1)) {
+    bonus['insect'] = (bonus['insect'] || 0) + 0.12;
+  }
+  // B+C bantları dominant → EC veya heat (orta hız)
+  if (bandRatios['B'] > 0.2 && bandRatios['C'] > 0.2) {
+    bonus['ec'] = (bonus['ec'] || 0) + 0.08;
+    bonus['heat'] = (bonus['heat'] || 0) + 0.06;
+  }
+  // E+F bantları dominant → fungus veya hafif kuraklık (yavaş sinyal)
+  if (bandRatios['E'] > 0.2 && bandRatios['F'] > 0.15) {
+    bonus['fungus'] = (bonus['fungus'] || 0) + 0.10;
+    bonus['drought_mild'] = (bonus['drought_mild'] || 0) + 0.07;
+  }
+  // D+E dominant ve A yoksa → drought_mild veya rest
+  if (bandRatios['D'] > 0.25 && bandRatios['E'] > 0.15 && bandRatios['A'] < 0.05) {
+    bonus['drought_mild'] = (bonus['drought_mild'] || 0) + 0.08;
+  }
+  // Yüksek bant çeşitliliği bonus → birden fazla stresin üst üste geldiğine işaret
+  if (bandDiversity >= 4) {
+    stressScores.forEach(s => {
+      if (s.score > 0.06) bonus[s.key] = (bonus[s.key] || 0) + 0.04;
+    });
+  }
+  return bonus;
+}
+
+function sensorDistance(memProfile, currentProfile) {
+  const sKeys = Object.keys(SENSOR_LABELS);
+  let sumSq = 0, totalW = 0;
+  sKeys.forEach(sk => {
+    const meta = SENSOR_LABELS[sk];
+    const range = meta.max - meta.min;
+    if (range === 0) return;
+    const diff = (memProfile[sk] - currentProfile[sk]) / range;
+    const w = SENSOR_WEIGHTS[sk] || 1;
+    sumSq += diff * diff * w;
+    totalW += w;
+  });
+  return totalW > 0 ? Math.sqrt(sumSq / totalW) : 1;
+}
+
+function predictCurrentState() {
+  const now = Date.now();
+  const recentFires = spikeBuffer.filter(s => now - s.t < 5000);
+  if (recentFires.length < 3) return null;
+
+  const nIds = [...new Set(recentFires.map(s => s.nId))];
+
+  // ── KATMAN 2: Sensör tabanlı oy (sensorless modda atlanır) ──────────
+  const stressVotes = {};
+  let totalVoteW = 0;
+  let validNeurons = 0;
+  let lockedCount = 0;
+
+  Object.keys(neuronStressLog).forEach(stressKey => {
+    const stressLog = neuronStressLog[stressKey];
+    let stressVote = 0;
+    let stressNeuronCount = 0;
+
+    nIds.forEach(nId => {
+      const n = neurons[nId - 1];
+      if (!n) return;
+      const entry = stressLog[nId];
+      if (!entry || entry.fires < 2) return;
+      if (entry.sensorSamples < 2) return;
+
+      validNeurons++;
+      if (n.baselineLocked) lockedCount++;
+
+      let sim;
+      if (sensorlessMode) {
+        // Sensörsüz: sadece bağ gücü × ateşlenme sayısı
+        // Sensör mesafesi hesaplanmaz, sim sabit 0.6
+        sim = 0.6;
+      } else {
+        const dist = sensorDistance(entry.sensorMem, currentSensors);
+        sim = Math.exp(-dist * dist * 10);
+      }
+      const wSq = n.w * n.w;
+      const fireFactor = Math.log(1 + entry.fires);
+      const vote = sim * wSq * fireFactor;
+
+      stressVote += vote;
+      stressNeuronCount++;
+      totalVoteW += vote;
+    });
+
+    if (stressVote > 0) {
+      stressVotes[stressKey] = { vote: stressVote, neuronCount: stressNeuronCount };
+    }
+  });
+
+  if (totalVoteW === 0) return null;
+
+  // ── KATMAN 3: Ko-aktivasyon kombinasyon bonusu ──────────────────────
+  let stressScoresPrelim = Object.entries(stressVotes)
+    .map(([key, v]) => ({ key, score: v.vote / totalVoteW, neuronCount: v.neuronCount, rawVote: v.vote }))
+    .sort((a, b) => b.score - a.score);
+
+  const coBonus = getCoActivationCombinationBonus(nIds, stressScoresPrelim);
+
+  // Bonusu uygula ve yeniden normalize
+  let rawTotalAfterBonus = 0;
+  stressScoresPrelim.forEach(s => {
+    if (coBonus[s.key]) s.score += coBonus[s.key];
+    rawTotalAfterBonus += s.score;
+  });
+  if (rawTotalAfterBonus > 0) {
+    stressScoresPrelim.forEach(s => s.score /= rawTotalAfterBonus);
+  }
+  stressScoresPrelim.sort((a, b) => b.score - a.score);
+
+  // ── KATMAN 4: Çoklu eşik — tüm aktif stresler birlikte ──────────────
+  // Dinamik eşik: en yüksek skor × 0.25 (en az 0.07)
+  const topScore = stressScoresPrelim[0]?.score || 0;
+  const SCORE_THR = Math.max(0.07, topScore * 0.25);
+  const predictions = stressScoresPrelim.filter(s => s.score > SCORE_THR);
+
+  // ── Anomali hesabı ───────────────────────────────────────────────────
+  const baselineSensors = {};
+  let bTotalW = 0;
+  nIds.forEach(nId => {
+    const n = neurons[nId - 1];
+    if (!n || !n.sensorMem || n.sensorSamples < 3) return;
+    const wSq = n.w * n.w;
+    const ref = (n.baselineLocked && n.baselineMem) ? n.baselineMem : n.sensorMem;
+    bTotalW += wSq;
+    Object.keys(ref).forEach(sk => {
+      baselineSensors[sk] = (baselineSensors[sk] || 0) + ref[sk] * wSq;
+    });
+  });
+  if (bTotalW > 0) Object.keys(baselineSensors).forEach(sk => { baselineSensors[sk] /= bTotalW; });
+
+  const anomalies = {};
+  const sKeys = Object.keys(SENSOR_LABELS);
+  sKeys.forEach(sk => {
+    const meta = SENSOR_LABELS[sk];
+    const range = meta.max - meta.min;
+    const current = currentSensors[sk];
+    const baseline = baselineSensors[sk] || current;
+    const delta = range > 0 ? (current - baseline) / range : 0;
+    anomalies[sk] = { current, baseline, delta, absDelta: Math.abs(delta), score: Math.abs(delta) * (SENSOR_WEIGHTS[sk] || 1) };
+  });
+  const sortedAnomalies = sKeys.filter(sk => anomalies[sk].absDelta > 0.02).sort((a, b) => anomalies[b].score - anomalies[a].score);
+  const totalAW = sKeys.reduce((s, sk) => s + (SENSOR_WEIGHTS[sk] || 1), 0);
+  const avgAnomaly = sKeys.reduce((s, sk) => s + anomalies[sk].score, 0) / totalAW;
+  const normalScore = Math.max(0, 1 - avgAnomaly * 2);
+  const baselineLockPct = validNeurons > 0 ? Math.round(lockedCount / validNeurons * 100) : 0;
+
+  // ── KATMAN 5: NLG — Türkçe kompozit cümle ───────────────────────────
+  const nlgSentence = generateNLGSentence(predictions, anomalies, sortedAnomalies, validNeurons, sensorlessMode, coBonus);
+
+  return {
+    predictions,
+    stressScores: stressScoresPrelim,
+    anomalies,
+    sortedAnomalies,
+    baselineSensors,
+    normalScore,
+    sampleCount: validNeurons,
+    baselineLockPct,
+    nlgSentence,
+    coBonus,
+    dynamicThreshold: SCORE_THR,
+    isSensorless: sensorlessMode,
+  };
+}
+
+// ── NLG: Türkçe Kompozit Cümle Üretici ────────────────────────────────
+function generateNLGSentence(predictions, anomalies, sortedAnomalies, neuronCount, isSensorless, coBonus) {
+  if (!predictions || predictions.length === 0) {
+    return { main: 'Yeterli nöron örüntüsü oluşmadı, sistem henüz öğreniyor.', detail: '', confidence: 'low', color: '#484f58' };
+  }
+
+  // Sadece dinlenme varsa
+  if (predictions.length === 1 && predictions[0].key === 'rest') {
+    return {
+      main: 'Bitki şu an normal/dinlenme durumunda.',
+      detail: 'Sensörler ve nöron örüntüsü baz durumla uyumlu.',
+      confidence: 'high',
+      color: '#10b981'
+    };
+  }
+
+  // Aktif stresler (dinlenme hariç)
+  const activeStresses = predictions.filter(p => p.key !== 'rest');
+  const restEntry = predictions.find(p => p.key === 'rest');
+
+  if (activeStresses.length === 0) {
+    return {
+      main: 'Bitki şu an normal/dinlenme durumunda.',
+      detail: 'Nöron örüntüsü baz durumla uyumlu.',
+      confidence: 'high',
+      color: '#10b981'
+    };
+  }
+
+  // Güven seviyesi: en yüksek skor + nöron sayısına göre
+  const topScore = activeStresses[0].score;
+  const confidence = topScore > 0.45 ? 'high' : topScore > 0.28 ? 'medium' : 'low';
+  const confidenceText = confidence === 'high' ? 'yüksek güvenle' : confidence === 'medium' ? 'orta güvenle' : 'düşük güvenle (öğrenme devam ediyor)';
+  const topMeta = STRESS_META[activeStresses[0].key];
+
+  // Birincil stres cümlesi
+  let mainStr = '';
+  let detailParts = [];
+
+  if (activeStresses.length === 1) {
+    const m = STRESS_META[activeStresses[0].key];
+    const pct = Math.round(activeStresses[0].score * 100);
+    mainStr = `Bitki şu an ${m.short} yaşıyor (${confidenceText}, %${pct}).`;
+  } else if (activeStresses.length === 2) {
+    const m0 = STRESS_META[activeStresses[0].key];
+    const m1 = STRESS_META[activeStresses[1].key];
+    const p0 = Math.round(activeStresses[0].score * 100);
+    const p1 = Math.round(activeStresses[1].score * 100);
+    mainStr = `Bitki şu an ${m0.short} ve ${m1.short} yaşıyor (${confidenceText}).`;
+    detailParts.push(`Baskın: ${m0.label} %${p0} · Eşlik eden: ${m1.label} %${p1}`);
+  } else if (activeStresses.length === 3) {
+    const m0 = STRESS_META[activeStresses[0].key];
+    const m1 = STRESS_META[activeStresses[1].key];
+    const m2 = STRESS_META[activeStresses[2].key];
+    mainStr = `Bitki şu an çoklu stres altında: ${m0.short}, ${m1.short} ve ek olarak ${m2.short} (${confidenceText}).`;
+    detailParts.push(activeStresses.map(s => `${STRESS_META[s.key].label} %${Math.round(s.score*100)}`).join(' · '));
+  } else {
+    const names = activeStresses.slice(0, 3).map(s => STRESS_META[s.key].short).join(', ');
+    mainStr = `Bitki karmaşık/yoğun stres altında: ${names} ve ${activeStresses.length - 3} başka faktör (${confidenceText}).`;
+    detailParts.push(activeStresses.slice(0, 4).map(s => `${STRESS_META[s.key].label} %${Math.round(s.score*100)}`).join(' · '));
+  }
+
+  // Ko-aktivasyon kombinasyon ipuçları varsa ekle
+  const activeCoBonusKeys = Object.keys(coBonus).filter(k => coBonus[k] > 0.06);
+  if (activeCoBonusKeys.length > 0) {
+    const coStr = activeCoBonusKeys.map(k => STRESS_META[k]?.short || k).join(' + ');
+    detailParts.push(`Nöron örüntüsü kombinasyonu: ${coStr} bant aktivasyonu algılandı`);
+  }
+
+  // Sensör anomali özeti (sensörsüz modda atlanır)
+  if (!isSensorless && sortedAnomalies.length > 0) {
+    const topAnom = sortedAnomalies.slice(0, 3);
+    const anomStr = topAnom.map(sk => {
+      const a = anomalies[sk];
+      const dir = a.delta > 0 ? 'yüksek' : 'düşük';
+      return `${SENSOR_LABELS[sk].label} ${dir}`;
+    }).join(', ');
+    detailParts.push(`Sensör sapması: ${anomStr}`);
+  } else if (isSensorless) {
+    detailParts.push(`⊗ Sensörsüz mod aktif — tahmin yalnızca ${neuronCount} nöron örüntüsünden yapıldı`);
+  }
+
+  // Dinlenme skoru varsa ekle
+  if (restEntry && restEntry.score > 0.1) {
+    const restPct = Math.round(restEntry.score * 100);
+    detailParts.push(`Not: Dinlenme pattern'i de %${restPct} oranında mevcut`);
+  }
+
+  return {
+    main: mainStr,
+    detail: detailParts.join(' · '),
+    confidence,
+    color: topMeta?.color || '#8b949e'
+  };
+}
+
+function renderPredictionPanel() {
+  const panel = document.getElementById('predictionPanel');
+  if (!panel) return;
+  const fresh = predictCurrentState();
+  if (fresh) lastPredictionResult = fresh;
+  const result = lastPredictionResult;
+
+  if (!result) {
+    panel.innerHTML = `<div style="color:#484f58;font-family:var(--mono);font-size:11px;padding:8px 0">
+      Yeterli veri yok — ~5 saniye aktif stres gerekli</div>`;
+    return;
+  }
+
+  const { predictions, stressScores, anomalies, sortedAnomalies, normalScore,
+          sampleCount, baselineLockPct, nlgSentence, isSensorless, dynamicThreshold } = result;
+
+  const topPred = predictions[0];
+  const topMeta = topPred ? (STRESS_META[topPred.key] || { label: topPred.key, emoji: '?', color: '#8b949e' }) : null;
+  const activePreds = predictions.filter(p => p.key !== 'rest');
+
+  const HIGH_ANOM = sortedAnomalies.filter(sk => anomalies[sk].absDelta > 0.08);
+  const anomalyText = HIGH_ANOM.length === 0
+    ? 'Sensörler baz durum ile uyumlu'
+    : HIGH_ANOM.slice(0, 4).map(sk => {
+        const a = anomalies[sk];
+        const dir = a.delta > 0 ? '↑' : '↓';
+        return `${SENSOR_LABELS[sk].label} ${dir}${(a.absDelta * 100).toFixed(0)}%`;
+      }).join('  ·  ');
+
+  const normPct = Math.round(normalScore * 100);
+  const normCol = normalScore > 0.6 ? '#10b981' : normalScore > 0.35 ? '#f59e0b' : '#ef4444';
+
+  // NLG kutusu rengi ve glow
+  const nlgBorder = nlgSentence.confidence === 'high' ? nlgSentence.color + '66'
+                  : nlgSentence.confidence === 'medium' ? nlgSentence.color + '44' : '#484f5844';
+  const nlgGlow = nlgSentence.confidence === 'high' ? `0 0 14px ${nlgSentence.color}22` : 'none';
+
+  let html = `
+  <!-- NLG ÇIKARIM CÜMLESİ -->
+  <div style="background:var(--bg3);border:1px solid ${nlgBorder};border-radius:10px;padding:12px 16px;margin-bottom:12px;box-shadow:${nlgGlow}">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.08em">◉ ÇIKARIM</span>
+      ${isSensorless ? `<span style="font-family:var(--mono);font-size:8px;color:#ef4444;background:#ef444422;padding:1px 6px;border-radius:3px;border:1px solid #ef444444">⊗ SENSÖRSÜZ</span>` : ''}
+      <span style="font-family:var(--mono);font-size:8px;color:${nlgSentence.confidence==='high'?'#10b981':nlgSentence.confidence==='medium'?'#f59e0b':'#484f58'};background:${nlgSentence.confidence==='high'?'#10b98122':nlgSentence.confidence==='medium'?'#f59e0b22':'#484f5822'};padding:1px 6px;border-radius:3px;border:1px solid ${nlgSentence.confidence==='high'?'#10b98144':nlgSentence.confidence==='medium'?'#f59e0b44':'#484f5844'}">${nlgSentence.confidence==='high'?'yüksek güven':nlgSentence.confidence==='medium'?'orta güven':'düşük güven'}</span>
+    </div>
+    <div style="font-family:var(--sans);font-size:13px;font-weight:500;color:${nlgSentence.color};line-height:1.5;margin-bottom:${nlgSentence.detail ? 6 : 0}px">${nlgSentence.main}</div>
+    ${nlgSentence.detail ? `<div style="font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.7">${nlgSentence.detail}</div>` : ''}
+  </div>
+
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;margin-bottom:12px">
+
+    <!-- Sol: en güçlü tahmin + normallik skoru -->
+    <div style="background:var(--bg3);border:1px solid ${topMeta ? topMeta.color + '55' : 'var(--border)'};border-radius:10px;padding:12px 16px;min-width:140px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.08em;margin-bottom:6px">SNN TAHMİNİ</div>
+      ${topPred
+        ? `<div style="font-family:var(--mono);font-size:22px;line-height:1;margin-bottom:4px">${topMeta.emoji}</div>
+           <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:${topMeta.color};line-height:1.3;margin-bottom:6px">${topMeta.label}</div>
+           <div style="font-family:var(--mono);font-size:10px;color:var(--text2)">güven: ${(topPred.score * 100).toFixed(0)}%</div>
+           ${activePreds.length > 1 ? `<div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px">+${activePreds.length-1} ek stres</div>` : ''}`
+        : `<div style="font-family:var(--mono);font-size:11px;color:var(--text3)">eşleşme yok</div>`}
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:3px">NORMALDEN SAPMA</div>
+        <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:${normCol}">${100 - normPct}%</div>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:6px">${sampleCount} nöron · baz ${baselineLockPct}% kilitli</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:3px">eşik: ${(dynamicThreshold*100).toFixed(0)}% (dinamik)</div>
+    </div>
+
+    <!-- Sağ: stres oy dağılımı + anomali -->
+    <div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.06em;margin-bottom:8px">NÖRON OY DAĞILIMI — dinamik eşik: ${(dynamicThreshold*100).toFixed(0)}%</div>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+        ${stressScores.slice(0, 7).map(s => {
+          const m = STRESS_META[s.key] || { label: s.key, color: '#8b949e' };
+          const pct = (s.score * 100).toFixed(0);
+          const barW = Math.round(s.score * 100);
+          const isTop = s.key === topPred?.key;
+          const isActive = predictions.some(p => p.key === s.key);
+          return `<div style="display:flex;align-items:center;gap:8px">
+            <span style="font-family:var(--mono);font-size:9px;color:${isActive ? m.color : 'var(--text3)'};width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${isActive ? '▶ ' : ''}${m.label}</span>
+            <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${barW}%;background:${m.color};border-radius:3px;opacity:${isActive ? 1 : 0.25};transition:width .4s"></div>
+            </div>
+            <span style="font-family:var(--mono);font-size:9px;color:${isActive ? m.color : 'var(--text3)'};width:28px;text-align:right">${pct}%</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.06em;margin-bottom:4px">ANOMALİ SİNYALLERİ ${isSensorless ? '(sensörsüz modda gösterge)' : ''}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:${HIGH_ANOM.length ? '#f59e0b' : '#10b981'};line-height:1.8">${anomalyText}</div>
+    </div>
+  </div>
+
+  <!-- Sensör tablosu: nöron hafızası vs anlık -->
+  <div style="border-top:1px solid var(--border);padding-top:10px">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.06em;margin-bottom:8px">
+      SENSÖR DURUMU — nöron hafızası (öğrenilmiş baz) vs anlık ölçüm
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:7px">`;
+
+  Object.keys(SENSOR_LABELS).forEach(sk => {
+    const meta = SENSOR_LABELS[sk];
+    const a = result.anomalies[sk];
+    if (!a) return;
+    const memPct = Math.min(100, Math.max(0, (a.baseline - meta.min) / (meta.max - meta.min) * 100));
+    const curPct = Math.min(100, Math.max(0, (a.current - meta.min) / (meta.max - meta.min) * 100));
+    const anomCol = a.absDelta > 0.12 ? '#ef4444' : a.absDelta > 0.06 ? '#f59e0b' : '#10b981';
+    const dir = a.delta > 0.025 ? '↑' : a.delta < -0.025 ? '↓' : '=';
+    const dirCol = a.delta > 0.025 ? '#ef4444' : a.delta < -0.025 ? '#22d3ee' : '#10b981';
+    html += `<div style="background:var(--bg3);border:1px solid ${a.absDelta > 0.08 ? anomCol + '66' : 'var(--border)'};border-radius:7px;padding:8px 10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${meta.label}</span>
+        <span style="font-family:var(--mono);font-size:11px;color:${dirCol};font-weight:700">${dir}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+        <span style="font-family:var(--mono);font-size:13px;color:#c9d1d9">${a.current.toFixed(1)}<span style="font-size:8px;color:var(--text3);margin-left:1px">${meta.unit}</span></span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--text3)">baz: ${a.baseline.toFixed(1)}</span>
+      </div>
+      <div style="position:relative;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div style="position:absolute;left:0;top:0;height:100%;width:${memPct}%;background:#484f5888;border-radius:3px"></div>
+        <div style="position:absolute;left:0;top:0;height:100%;width:${curPct}%;background:${anomCol};border-radius:3px;opacity:0.8"></div>
+      </div>
+    </div>`;
+  });
+
+  html += '</div></div>';
+  panel.innerHTML = html;
+}
+
+// ─── BAŞLAT ──────────────────────────────────────────────
+window.addEventListener('resize', () => { resizeCanvases(); drawGraphs(); });
+initNetwork();
+setInterval(mainTick, CYCLE_MS);
+drawGraphs();
+</script>
+<!-- ÖRÜNTÜ HARİTASI MODAL -->
+<div id="pmOverlay" style="display:none;position:fixed;inset:0;background:#000000cc;z-index:100;overflow-y:auto;padding:24px" onclick="if(event.target===this)closePatternMap()">
+  <div style="max-width:960px;margin:0 auto;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--bg3)">
+      <span style="font-family:var(--mono);font-size:12px;color:#a855f7;letter-spacing:.08em">◈ ÖRÜNTÜ HARİTASI — Ko-Aktivasyon Ağı</span>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text3)" id="pmTotal">—</span>
+        <button onclick="closePatternMap()" style="background:var(--border);border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-family:var(--mono);font-size:10px;padding:4px 10px;cursor:pointer">✕ kapat</button>
+      </div>
+    </div>
+    <!-- Filtre bar -->
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span style="font-family:var(--mono);font-size:9px;color:var(--text3)">MIN TEKRAR:</span>
+      <input type="range" id="pmMinCount" min="1" max="20" value="3" style="width:100px;accent-color:#a855f7" oninput="document.getElementById('pmMinVal').textContent=this.value;renderPatternMap()">
+      <span id="pmMinVal" style="font-family:var(--mono);font-size:10px;color:#a855f7;width:20px">3</span>
+      <span style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-left:12px">SIRALAMA:</span>
+      <select id="pmSort" onchange="renderPatternMap()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:10px;padding:3px 6px;border-radius:4px">
+        <option value="count">tekrar sayısı</option>
+        <option value="strength">bağ gücü</option>
+        <option value="recent">en son</option>
+      </select>
+    </div>
+    <!-- Canvas + liste yan yana -->
+    <div style="display:grid;grid-template-columns:1fr 320px;min-height:420px">
+      <!-- Ağ görselleştirme canvas -->
+      <div style="padding:16px;border-right:1px solid var(--border);position:relative">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:8px">KO-AKTİVASYON AĞI — düğüm büyüklüğü = ateşlenme, kenar kalınlığı = birlikte atım</div>
+        <canvas id="pmCanvas" width="560" height="360" style="width:100%;border-radius:6px;background:#080b0f"></canvas>
+        <div id="pmNodeInfo" style="position:absolute;bottom:20px;left:20px;font-family:var(--mono);font-size:9px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:6px 10px;display:none"></div>
+      </div>
+      <!-- Sıralı örüntü listesi -->
+      <div style="padding:12px;overflow-y:auto;max-height:420px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+          EN GÜÇLÜ ÖRÜNTÜLER
+        </div>
+        <div id="pmList"></div>
+      </div>
+    </div>
+    <!-- Alt özet -->
+    <div id="pmSummary" style="padding:12px 16px;border-top:1px solid var(--border);background:var(--bg3);font-family:var(--mono);font-size:9px;color:var(--text3)"></div>
+  </div>
+</div>
+
+<script>
+function openPatternMap() {
+  document.getElementById('pmOverlay').style.display = 'block';
+  renderPatternMap();
+}
+function closePatternMap() {
+  document.getElementById('pmOverlay').style.display = 'none';
+}
+
+function renderPatternMap() {
+  const minCount = parseInt(document.getElementById('pmMinCount').value);
+  const sortBy   = document.getElementById('pmSort').value;
+
+  // Filtreleme
+  let entries = Object.entries(coActivationMap).filter(([k,v]) => v.count >= minCount);
+
+  // Sıralama
+  if (sortBy === 'count')    entries.sort((a,b) => b[1].count - a[1].count);
+  else if (sortBy === 'strength') entries.sort((a,b) => b[1].strength - a[1].strength);
+  else entries.sort((a,b) => b[1].lastSeen - a[1].lastSeen);
+
+  document.getElementById('pmTotal').textContent = `${entries.length} örüntü / ${Object.keys(coActivationMap).length} toplam çift`;
+
+  // Liste
+  const list = document.getElementById('pmList');
+  if (entries.length === 0) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:10px;padding:12px 0">Henüz yeterli ko-aktivasyon yok.<br>Stres senaryolarını çalıştır ve bekle.</div>';
+  } else {
+    list.innerHTML = entries.slice(0, 30).map(([key, v], i) => {
+      const [nA, nB] = key.split('+');
+      const age = Math.round((Date.now() - v.lastSeen) / 1000);
+      const ageStr = age < 60 ? `${age}s önce` : `${Math.round(age/60)}dk önce`;
+      const barW = Math.round(v.strength * 60);
+      const col = v.strength > 0.6 ? '#10b981' : v.strength > 0.35 ? '#f59e0b' : '#a855f7';
+      return `<div onclick="highlightPair('${key}')" style="padding:5px 4px;border-radius:4px;cursor:pointer;margin-bottom:2px;border:1px solid transparent;transition:all .1s" onmouseover="this.style.borderColor='#a855f744';this.style.background='#a855f710'" onmouseout="this.style.borderColor='transparent';this.style.background='transparent'">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="color:${col};font-size:10px">${nA} <span style="color:var(--text3)">↔</span> ${nB}</span>
+          <span style="color:var(--text3);font-size:9px">${ageStr}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+            <div style="height:100%;width:${barW}px;background:${col};border-radius:2px"></div>
+          </div>
+          <span style="font-size:9px;color:var(--text2)">×${v.count}</span>
+          <span style="font-size:9px;color:${col}">${(v.strength*100).toFixed(0)}%</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Özet
+  const totalPairs = Object.keys(coActivationMap).length;
+  const strongPairs = Object.values(coActivationMap).filter(v => v.strength > 0.5).length;
+  const topPair = entries[0];
+  document.getElementById('pmSummary').innerHTML = topPair
+    ? `toplam çift: <span style="color:var(--text2)">${totalPairs}</span> &nbsp;|&nbsp; güçlü örüntü (>50%): <span style="color:#10b981">${strongPairs}</span> &nbsp;|&nbsp; en sık: <span style="color:#a855f7">${topPair[0]} × ${topPair[1].count}</span>`
+    : 'henüz örüntü yok';
+
+  // Ağ grafiği çiz
+  drawPatternGraph(entries.slice(0, 25));
+}
+
+let pmHighlight = null;
+function highlightPair(key) {
+  pmHighlight = key;
+  renderPatternMap();
+}
+
+function drawPatternGraph(entries) {
+  const canvas = document.getElementById('pmCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#080b0f';
+  ctx.fillRect(0, 0, W, H);
+
+  if (entries.length === 0) {
+    ctx.fillStyle = '#484f58';
+    ctx.font = '11px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('veri bekleniyor...', W/2, H/2);
+    return;
+  }
+
+  // Düğümleri topla
+  const nodeSet = new Set();
+  entries.forEach(([key]) => { const [a,b] = key.split('+'); nodeSet.add(a); nodeSet.add(b); });
+  const nodes = Array.from(nodeSet);
+
+  // Her düğüm için ateşlenme bilgisi
+  function getNodeFires(nLabel) {
+    const id = parseInt(nLabel.replace('N',''));
+    let total = 0;
+    Object.values(neuronStressLog).forEach(log => {
+      if (log[id]) total += log[id].fires;
+    });
+    return total;
+  }
+  function getNodeBand(nLabel) {
+    const id = parseInt(nLabel.replace('N',''));
+    const n = neurons[id - 1];
+    return n ? n.band : 'A';
+  }
+
+  // Kuvvet yönelimli yerleşim (basit iteratif)
+  const pos = {};
+  const cx = W/2, cy = H/2, r = Math.min(W, H) * 0.36;
+  nodes.forEach((n, i) => {
+    const angle = (i / nodes.length) * Math.PI * 2;
+    pos[n] = { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+  });
+
+  // Birkaç iterasyon kuvvet uygula
+  for (let iter = 0; iter < 60; iter++) {
+    // İtme
+    nodes.forEach(a => {
+      nodes.forEach(b => {
+        if (a === b) return;
+        const dx = pos[a].x - pos[b].x, dy = pos[a].y - pos[b].y;
+        const dist = Math.sqrt(dx*dx + dy*dy) + 0.1;
+        const f = 1200 / (dist * dist);
+        pos[a].x += (dx / dist) * f;
+        pos[a].y += (dy / dist) * f;
+      });
+    });
+    // Çekme (kenarlar boyunca)
+    entries.forEach(([key, v]) => {
+      const [a, b] = key.split('+');
+      const dx = pos[b].x - pos[a].x, dy = pos[b].y - pos[a].y;
+      const dist = Math.sqrt(dx*dx + dy*dy) + 0.1;
+      const f = (dist - 80) * 0.03 * v.strength;
+      pos[a].x += (dx / dist) * f;
+      pos[a].y += (dy / dist) * f;
+      pos[b].x -= (dx / dist) * f;
+      pos[b].y -= (dy / dist) * f;
+    });
+    // Sınır içinde tut
+    nodes.forEach(n => {
+      pos[n].x = Math.max(24, Math.min(W - 24, pos[n].x));
+      pos[n].y = Math.max(24, Math.min(H - 24, pos[n].y));
+    });
+  }
+
+  // Kenarları çiz
+  entries.forEach(([key, v]) => {
+    const [a, b] = key.split('+');
+    if (!pos[a] || !pos[b]) return;
+    const isHL = key === pmHighlight;
+    const alpha = 0.15 + v.strength * 0.7;
+    const lw = 0.5 + v.strength * 4;
+    ctx.beginPath();
+    ctx.moveTo(pos[a].x, pos[a].y);
+    ctx.lineTo(pos[b].x, pos[b].y);
+    ctx.strokeStyle = isHL ? `rgba(255,255,255,${alpha})` : `rgba(168,85,247,${alpha})`;
+    ctx.lineWidth = isHL ? lw + 1 : lw;
+    ctx.stroke();
+    // Orta nokta — tekrar sayısı
+    if (v.count >= 5) {
+      const mx = (pos[a].x + pos[b].x) / 2, my = (pos[a].y + pos[b].y) / 2;
+      ctx.fillStyle = isHL ? '#fff' : '#a855f799';
+      ctx.font = '8px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('×' + v.count, mx, my - 3);
+    }
+  });
+
+  // Düğümleri çiz
+  const maxFires = Math.max(...nodes.map(n => getNodeFires(n)), 1);
+  nodes.forEach(n => {
+    const fires = getNodeFires(n);
+    const band = getNodeBand(n);
+    const r2 = 4 + (fires / maxFires) * 10;
+    const col = BAND_COLORS[band] || '#8b949e';
+    const isHL = pmHighlight && pmHighlight.includes(n);
+
+    // Glow
+    if (isHL) {
+      ctx.beginPath();
+      ctx.arc(pos[n].x, pos[n].y, r2 + 5, 0, Math.PI*2);
+      ctx.fillStyle = col + '44';
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.arc(pos[n].x, pos[n].y, r2, 0, Math.PI*2);
+    ctx.fillStyle = isHL ? col : col + 'cc';
+    ctx.fill();
+    ctx.strokeStyle = isHL ? '#fff' : col + '66';
+    ctx.lineWidth = isHL ? 1.5 : 0.5;
+    ctx.stroke();
+
+    // Etiket
+    ctx.fillStyle = isHL ? '#fff' : '#c9d1d9';
+    ctx.font = `${isHL ? 'bold ' : ''}9px JetBrains Mono`;
+    ctx.textAlign = 'center';
+    ctx.fillText(n, pos[n].x, pos[n].y + r2 + 10);
+  });
+}
+</script>
+
+<!-- ÖĞRENME HARİTASI MODAL -->
+<div id="lmOverlay" style="display:none;position:fixed;inset:0;background:#000000cc;z-index:100;overflow-y:auto;padding:24px" onclick="if(event.target===this)closeLearningMap()">
+  <div style="max-width:900px;margin:0 auto;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--bg3)">
+      <span style="font-family:var(--mono);font-size:12px;color:#22d3ee;letter-spacing:.08em">◉ ÖĞRENME HARİTASI</span>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text3)" id="lmTotal">—</span>
+        <button onclick="closeLearningMap()" style="background:var(--border);border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-family:var(--mono);font-size:10px;padding:4px 10px;cursor:pointer">✕ kapat</button>
+      </div>
+    </div>
+    <!-- Stres sekmeler -->
+    <div id="lmTabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);overflow-x:auto"></div>
+    <!-- İçerik -->
+    <div id="lmContent" style="padding:16px"></div>
+  </div>
+</div>
+
+<script>
+const STRESS_LABELS = {
+  drought_mild:   { label: 'Susuzluk Hafif', color: '#22d3ee' },
+  drought_severe: { label: 'Susuzluk Şiddetli', color: '#ef4444' },
+  ec:             { label: 'EC Stresi', color: '#f59e0b' },
+  insect:         { label: 'Böcek', color: '#a855f7' },
+  heat:           { label: 'Sıcaklık', color: '#f97316' },
+  rest:           { label: 'Dinlenme', color: '#10b981' },
+  fungus:         { label: 'Fungus', color: '#84cc16' },
+};
+
+function openLearningMap() {
+  const overlay = document.getElementById('lmOverlay');
+  overlay.style.display = 'block';
+  renderLearningMap();
+}
+
+function closeLearningMap() {
+  document.getElementById('lmOverlay').style.display = 'none';
+}
+
+function renderLearningMap() {
+  const tabs = document.getElementById('lmTabs');
+  const content = document.getElementById('lmContent');
+  const lmTotal = document.getElementById('lmTotal');
+
+  const keys = Object.keys(neuronStressLog).filter(k => Object.keys(neuronStressLog[k]).length > 0);
+
+  // Toplam ateşleme sayısı
+  let total = 0;
+  keys.forEach(k => Object.values(neuronStressLog[k]).forEach(v => total += v.fires));
+  lmTotal.textContent = `toplam ${total} ateşleme kaydı`;
+
+  if (keys.length === 0) {
+    tabs.innerHTML = '';
+    content.innerHTML = '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);padding:20px;text-align:center">Henüz veri yok — önce bir stres senaryosu çalıştır.</div>';
+    return;
+  }
+
+  // Sekme yoksa ilk sekmeyi seç
+  if (!lmActiveTab || !neuronStressLog[lmActiveTab]) lmActiveTab = keys[0];
+
+  // Sekmeler
+  tabs.innerHTML = keys.map(k => {
+    const meta = STRESS_LABELS[k] || { label: k, color: '#8b949e' };
+    const count = Object.keys(neuronStressLog[k]).length;
+    const isActive = k === lmActiveTab;
+    return `<button onclick="lmActiveTab='${k}';renderLearningMap()" style="
+      padding:8px 14px;border:none;border-bottom:2px solid ${isActive ? meta.color : 'transparent'};
+      background:${isActive ? meta.color + '18' : 'transparent'};
+      color:${isActive ? meta.color : 'var(--text3)'};
+      font-family:var(--mono);font-size:10px;cursor:pointer;white-space:nowrap;transition:all .15s">
+      ${meta.label} <span style="opacity:.6">(${count}n)</span>
+    </button>`;
+  }).join('');
+
+  // İçerik — aktif stres için nöron tablosu
+  const log = neuronStressLog[lmActiveTab];
+  const meta = STRESS_LABELS[lmActiveTab] || { label: lmActiveTab, color: '#8b949e' };
+  const entries = Object.entries(log).sort((a, b) => b[1].fires - a[1].fires);
+
+  // Özet istatistik
+  const maxFires = entries[0]?.[1].fires || 1;
+  const maxW = Math.max(...entries.map(e => e[1].lastW));
+  const avgFires = (entries.reduce((s, e) => s + e[1].fires, 0) / entries.length).toFixed(1);
+
+  content.innerHTML = `
+    <div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:4px">AKTİF NÖRON</div>
+        <div style="font-family:var(--mono);font-size:18px;color:${meta.color}">${entries.length}</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:4px">MAKS ATEŞLENMESİ</div>
+        <div style="font-family:var(--mono);font-size:18px;color:${meta.color}">${maxFires}×</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:4px">ORT ATEŞLENMESİ</div>
+        <div style="font-family:var(--mono);font-size:18px;color:${meta.color}">${avgFires}×</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;flex:1;min-width:120px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:4px">MAKS BAĞ GÜCÜ</div>
+        <div style="font-family:var(--mono);font-size:18px;color:${meta.color}">${maxW.toFixed(2)}</div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:8px;display:grid;grid-template-columns:60px 50px 50px 1fr 70px 70px;gap:0 8px;padding:0 4px">
+      <span>NÖRON</span><span>BANT</span><span>τ (ms)</span><span>ATEŞLENMESİ</span><span style="text-align:right">BAĞ GÜCÜ</span><span style="text-align:right">TOPLAM Δw</span>
+    </div>
+    <div style="max-height:380px;overflow-y:auto">
+    ${entries.map(([id, v]) => {
+      const firePct = (v.fires / maxFires) * 100;
+      const wPct = (v.lastW / W_MAX) * 100;
+      const wColor = v.lastW > 3.5 ? '#10b981' : v.lastW > 2.5 ? '#f59e0b' : v.lastW > 1.5 ? meta.color : '#484f58';
+      const dwSign = v.totalDw >= 0 ? '+' : '';
+      return `<div style="display:grid;grid-template-columns:60px 50px 50px 1fr 70px 70px;gap:0 8px;align-items:center;padding:4px;border-radius:4px;margin-bottom:2px;background:${id % 2 === 0 ? 'transparent' : '#ffffff06'}">
+        <span style="color:${meta.color};font-size:10px">N${id}</span>
+        <span style="font-size:10px;color:${BAND_COLORS[v.band]}">${v.band}</span>
+        <span style="font-size:9px;color:var(--text3)">${v.tau.toFixed(0)}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${firePct}%;background:${meta.color};border-radius:3px;transition:width .3s"></div>
+          </div>
+          <span style="font-size:10px;color:var(--text2);width:30px;text-align:right">${v.fires}×</span>
+        </div>
+        <div style="text-align:right">
+          <span style="font-size:10px;color:${wColor}">${v.lastW.toFixed(2)}</span>
+          <div style="height:3px;background:var(--border);border-radius:2px;margin-top:2px;overflow:hidden">
+            <div style="height:100%;width:${wPct}%;background:${wColor};border-radius:2px"></div>
+          </div>
+        </div>
+        <span style="font-size:9px;color:${v.totalDw >= 0 ? '#10b981' : '#ef4444'};text-align:right">${dwSign}${v.totalDw.toFixed(3)}</span>
+      </div>`;
+    }).join('')}
+    </div>
+  `;
+}
+</script>
+
+</body>
+</html>
